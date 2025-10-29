@@ -46,6 +46,20 @@ const listaManual = [
   { pais: "España 🇪🇸", liga: "LaLiga", local: "Real Madrid", visita: "Getafe", hora: "17:00" }
 ];
 
+// Mapa de países en español
+const paisesESP = {
+  "Argentina":"Argentina","Brazil":"Brasil","Spain":"España","Turkey":"Turquía","Italy":"Italia",
+  "France":"Francia","England":"Inglaterra","Germany":"Alemania","Portugal":"Portugal","Mexico":"México",
+  "Ecuador":"Ecuador","Uruguay":"Uruguay","Chile":"Chile"
+};
+
+// Banderas básicas
+const banderas = {
+  "Argentina":"🇦🇷","Brasil":"🇧🇷","España":"🇪🇸","Turquía":"🇹🇷","Italia":"🇮🇹",
+  "Francia":"🇫🇷","Inglaterra":"🏴","Alemania":"🇩🇪","Portugal":"🇵🇹","México":"🇲🇽",
+  "Ecuador":"🇪🇨","Uruguay":"🇺🇾","Chile":"🇨🇱"
+};
+
 // Traer partidos desde API-Football
 async function cargarPartidos() {
   try {
@@ -61,10 +75,9 @@ async function cargarPartidos() {
 // Filtrar solo partidos de hoy según hora Argentina (UTC-3)
 function filtrarHoyArgentina(partidos) {
   const hoy = new Date();
-  const offset = -3 * 60; // UTC-3 Argentina
+  const offset = -3 * 60; // UTC-3
   return partidos.filter(p=>{
     const partidoUTC = new Date(p.fixture.date);
-    // Convertir a hora Argentina
     const partidoARG = new Date(partidoUTC.getTime() + offset*60000);
     return partidoARG.getFullYear()===hoy.getFullYear() &&
            partidoARG.getMonth()===hoy.getMonth() &&
@@ -74,31 +87,28 @@ function filtrarHoyArgentina(partidos) {
 
 // Mostrar partidos API
 function mostrarPartidosAPI(partidos) {
-  const lista = partidos.map(p=>({
-    pais: p.league.country + " " + bandera(p.league.country),
-    liga: p.league.name,
-    local: p.teams.home.name,
-    visita: p.teams.away.name,
-    hora: formatearHoraARG(p.fixture.date)
-  }));
+  const lista = partidos.map(p=>{
+    const paisEsp = paisesESP[p.league.country] || p.league.country;
+    return {
+      pais: paisEsp + " " + (banderas[paisEsp]||"🌍"),
+      liga: p.league.name,
+      local: p.teams.home.name,
+      visita: p.teams.away.name,
+      hora: formatearHoraARG(p.fixture.date)
+    }
+  });
   renderizar(ordenarPorPaisLiga(lista));
 }
 
 // Mostrar lista manual
 function mostrarManual() { renderizar(ordenarPorPaisLiga(listaManual)); }
 
-// Formatear hora Argentina
+// Formatear hora 24h Argentina
 function formatearHoraARG(fecha) {
   const partidoUTC = new Date(fecha);
   const offset = -3 * 60;
   const partidoARG = new Date(partidoUTC.getTime() + offset*60000);
-  return partidoARG.toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
-}
-
-// Banderas básicas
-function bandera(pais) {
-  const b={Argentina:"🇦🇷",Brasil:"🇧🇷",España:"🇪🇸",Italia:"🇮🇹",Francia:"🇫🇷",Inglaterra:"🏴",Alemania:"🇩🇪"};
-  return b[pais]||"🌍";
+  return partidoARG.toLocaleTimeString("es-AR",{hour12:false,hour:"2-digit",minute:"2-digit"});
 }
 
 // Ordenar por país y liga
