@@ -21,7 +21,7 @@
 <body>
 <header>
   <h1>Agenda Apuesta ⚽</h1>
-  <p>Partidos del día - Actualizado en tiempo real</p>
+  <p>Partidos de hoy - Hora Argentina (UTC-3)</p>
 </header>
 
 <div class="filters">
@@ -38,7 +38,6 @@
 const API_KEY = "58587099b74e80acd927232e2fbf71df";
 const agenda = document.getElementById("agenda");
 const searchInput = document.getElementById("search");
-const hoy = new Date().toISOString().split('T')[0];
 
 // Lista manual por si API falla
 const listaManual = [
@@ -50,37 +49,53 @@ const listaManual = [
 // Traer partidos desde API-Football
 async function cargarPartidos() {
   try {
-    const res = await fetch(`https://v3.football.api-sports.io/fixtures?date=${hoy}`, {
+    const res = await fetch(`https://v3.football.api-sports.io/fixtures?date=${new Date().toISOString().split('T')[0]}`, {
       headers: { "x-apisports-key": API_KEY }
     });
     const data = await res.json();
-    if (data.response && data.response.length>0) mostrarPartidosAPI(data.response);
+    if (data.response && data.response.length>0) mostrarPartidosAPI(filtrarHoyArgentina(data.response));
     else mostrarManual();
   } catch(err) { console.log(err); mostrarManual(); }
 }
 
-// Mostrar partidos desde API
+// Filtrar solo partidos de hoy según hora Argentina (UTC-3)
+function filtrarHoyArgentina(partidos) {
+  const hoy = new Date();
+  const offset = -3 * 60; // UTC-3 Argentina
+  return partidos.filter(p=>{
+    const partidoUTC = new Date(p.fixture.date);
+    // Convertir a hora Argentina
+    const partidoARG = new Date(partidoUTC.getTime() + offset*60000);
+    return partidoARG.getFullYear()===hoy.getFullYear() &&
+           partidoARG.getMonth()===hoy.getMonth() &&
+           partidoARG.getDate()===hoy.getDate();
+  });
+}
+
+// Mostrar partidos API
 function mostrarPartidosAPI(partidos) {
-  renderizar(ordenarPorPaisLiga(partidos.map(p=>{
-    return {
-      pais: p.league.country + " " + bandera(p.league.country),
-      liga: p.league.name,
-      local: p.teams.home.name,
-      visita: p.teams.away.name,
-      hora: formatearHora(p.fixture.date)
-    }
-  })));
+  const lista = partidos.map(p=>({
+    pais: p.league.country + " " + bandera(p.league.country),
+    liga: p.league.name,
+    local: p.teams.home.name,
+    visita: p.teams.away.name,
+    hora: formatearHoraARG(p.fixture.date)
+  }));
+  renderizar(ordenarPorPaisLiga(lista));
 }
 
 // Mostrar lista manual
-function mostrarManual() { renderizar(listaManual); }
+function mostrarManual() { renderizar(ordenarPorPaisLiga(listaManual)); }
 
-// Formatear hora a Argentina
-function formatearHora(fecha) {
-  return new Date(fecha).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
+// Formatear hora Argentina
+function formatearHoraARG(fecha) {
+  const partidoUTC = new Date(fecha);
+  const offset = -3 * 60;
+  const partidoARG = new Date(partidoUTC.getTime() + offset*60000);
+  return partidoARG.toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
 }
 
-// Función para mostrar banderas básicas
+// Banderas básicas
 function bandera(pais) {
   const b={Argentina:"🇦🇷",Brasil:"🇧🇷",España:"🇪🇸",Italia:"🇮🇹",Francia:"🇫🇷",Inglaterra:"🏴",Alemania:"🇩🇪"};
   return b[pais]||"🌍";
@@ -97,7 +112,7 @@ function ordenarPorPaisLiga(lista) {
   return grupos;
 }
 
-// Renderizar en HTML
+// Renderizar
 function renderizar(grupos) {
   const q = searchInput.value.toLowerCase();
   agenda.innerHTML="";
@@ -118,7 +133,7 @@ function renderizar(grupos) {
   if(!agenda.innerHTML) agenda.innerHTML="<p>No hay partidos para mostrar.</p>";
 }
 
-// Event listener del buscador
+// Buscador
 searchInput.addEventListener("input",()=>cargarPartidos());
 
 cargarPartidos();
