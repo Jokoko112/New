@@ -5,135 +5,123 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agenda Apuesta ⚽</title>
   <style>
-    body {
-      background: #0f172a;
-      color: #f1f5f9;
-      font-family: "Poppins", sans-serif;
-      margin: 0;
-      padding: 0;
-      text-align: center;
-    }
-    header {
-      background: #1e293b;
-      padding: 1rem;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
-    }
-    h1 { color: #38bdf8; margin: 0; }
-    .card {
-      background: #1e293b;
-      border-radius: 12px;
-      padding: 1rem;
-      margin: 1rem auto;
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    }
-    .pais {
-      font-weight: bold;
-      color: #facc15;
-      font-size: 1.1rem;
-    }
-    .liga {
-      color: #94a3b8;
-      font-size: 0.9rem;
-    }
-    .match {
-      margin-top: 0.5rem;
-      font-size: 1rem;
-    }
-    .hora {
-      color: #22c55e;
-      font-weight: bold;
-    }
+    body { background: #0f172a; color: #f1f5f9; font-family: "Poppins", sans-serif; margin:0; padding:0; text-align:center; }
+    header { background:#1e293b; padding:1rem; box-shadow:0 2px 10px rgba(0,0,0,0.4); }
+    h1 { color: #38bdf8; margin:0; }
+    .filters { margin:1rem auto; max-width:500px; display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap; }
+    input { padding:0.5rem; border-radius:6px; border:1px solid #ccc; flex:1; min-width:150px; }
+    .country { font-weight:bold; color:#facc15; margin-top:1rem; font-size:1.2rem; text-align:left; }
+    .league { color:#94a3b8; font-weight:600; margin-top:0.3rem; text-align:left; }
+    .match { background:#1e293b; margin:0.5rem 0; padding:0.5rem 1rem; border-radius:8px; display:flex; justify-content:space-between; align-items:center; }
+    .hora { color:#22c55e; font-weight:bold; }
+    .container { max-width:600px; margin:0 auto; padding:1rem; text-align:left; }
+    footer { text-align:center; font-size:0.85rem; color:#666; margin-top:2rem; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Agenda Apuesta ⚽</h1>
-    <p>Partidos del día - Actualizado en tiempo real</p>
-  </header>
+<header>
+  <h1>Agenda Apuesta ⚽</h1>
+  <p>Partidos del día - Actualizado en tiempo real</p>
+</header>
 
-  <div id="agenda"></div>
+<div class="filters">
+  <input type="text" id="search" placeholder="Buscar por país, liga o equipo...">
+</div>
 
-  <script>
-    const API_KEY = "58587099b74e80acd927232e2fbf71df"; // <-- reemplazá con tu key de API-Football
-    const hoy = new Date().toISOString().split('T')[0];
-    const agenda = document.getElementById("agenda");
+<div class="container" id="agenda">Cargando partidos...</div>
 
-    // Lista manual por si la API no devuelve nada
-    const listaManual = [
-      { pais: "Argentina 🇦🇷", liga: "Primera Nacional", local: "San Martín (T)", visita: "Ferro", hora: "20:10" },
-      { pais: "Brasil 🇧🇷", liga: "Serie A", local: "Flamengo", visita: "Palmeiras", hora: "19:30" },
-      { pais: "España 🇪🇸", liga: "LaLiga", local: "Real Madrid", visita: "Getafe", hora: "17:00" }
-    ];
+<footer>
+  Datos por <a href="https://www.api-football.com/" target="_blank">API-Football</a> — legal y sin transmisiones.
+</footer>
 
-    async function cargarPartidos() {
-      try {
-        const res = await fetch(`https://v3.football.api-sports.io/fixtures?date=${hoy}`, {
-          headers: { "x-apisports-key": API_KEY }
-        });
-        const data = await res.json();
+<script>
+const API_KEY = "58587099b74e80acd927232e2fbf71df";
+const agenda = document.getElementById("agenda");
+const searchInput = document.getElementById("search");
+const hoy = new Date().toISOString().split('T')[0];
 
-        if (data.response && data.response.length > 0) {
-          mostrarPartidosAPI(data.response);
-        } else {
-          mostrarManual();
-        }
-      } catch (err) {
-        console.log("Error al cargar API:", err);
-        mostrarManual();
-      }
+// Lista manual por si API falla
+const listaManual = [
+  { pais: "Argentina 🇦🇷", liga: "Primera Nacional", local: "San Martín (T)", visita: "Ferro", hora: "20:10" },
+  { pais: "Brasil 🇧🇷", liga: "Serie A", local: "Flamengo", visita: "Palmeiras", hora: "19:30" },
+  { pais: "España 🇪🇸", liga: "LaLiga", local: "Real Madrid", visita: "Getafe", hora: "17:00" }
+];
+
+// Traer partidos desde API-Football
+async function cargarPartidos() {
+  try {
+    const res = await fetch(`https://v3.football.api-sports.io/fixtures?date=${hoy}`, {
+      headers: { "x-apisports-key": API_KEY }
+    });
+    const data = await res.json();
+    if (data.response && data.response.length>0) mostrarPartidosAPI(data.response);
+    else mostrarManual();
+  } catch(err) { console.log(err); mostrarManual(); }
+}
+
+// Mostrar partidos desde API
+function mostrarPartidosAPI(partidos) {
+  renderizar(ordenarPorPaisLiga(partidos.map(p=>{
+    return {
+      pais: p.league.country + " " + bandera(p.league.country),
+      liga: p.league.name,
+      local: p.teams.home.name,
+      visita: p.teams.away.name,
+      hora: formatearHora(p.fixture.date)
     }
+  })));
+}
 
-    function mostrarPartidosAPI(partidos) {
-      agenda.innerHTML = "";
-      partidos.forEach(p => {
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `
-          <div class="pais">${p.league.country} ${bandera(p.league.country)}</div>
-          <div class="liga">${p.league.name}</div>
-          <div class="match">${p.teams.home.name} vs ${p.teams.away.name}</div>
-          <div class="hora">${formatearHora(p.fixture.date)}</div>
-        `;
-        agenda.appendChild(div);
+// Mostrar lista manual
+function mostrarManual() { renderizar(listaManual); }
+
+// Formatear hora a Argentina
+function formatearHora(fecha) {
+  return new Date(fecha).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
+}
+
+// Función para mostrar banderas básicas
+function bandera(pais) {
+  const b={Argentina:"🇦🇷",Brasil:"🇧🇷",España:"🇪🇸",Italia:"🇮🇹",Francia:"🇫🇷",Inglaterra:"🏴",Alemania:"🇩🇪"};
+  return b[pais]||"🌍";
+}
+
+// Ordenar por país y liga
+function ordenarPorPaisLiga(lista) {
+  const grupos = {};
+  lista.forEach(p=>{
+    if(!grupos[p.pais]) grupos[p.pais]={};
+    if(!grupos[p.pais][p.liga]) grupos[p.pais][p.liga]=[];
+    grupos[p.pais][p.liga].push(p);
+  });
+  return grupos;
+}
+
+// Renderizar en HTML
+function renderizar(grupos) {
+  const q = searchInput.value.toLowerCase();
+  agenda.innerHTML="";
+  for(const pais in grupos){
+    let paisMatches=false;
+    let htmlPais=`<div class="country">${pais}</div>`;
+    for(const liga in grupos[pais]){
+      const partidos = grupos[pais][liga].filter(p=>(`${p.local} ${p.visita} ${p.liga} ${p.pais}`.toLowerCase().includes(q)));
+      if(partidos.length===0) continue;
+      paisMatches=true;
+      htmlPais+=`<div class="league">${liga}</div>`;
+      partidos.forEach(m=>{
+        htmlPais+=`<div class="match"><span>${m.local} vs ${m.visita}</span><span class="hora">${m.hora}</span></div>`;
       });
     }
+    if(paisMatches) agenda.innerHTML+=htmlPais;
+  }
+  if(!agenda.innerHTML) agenda.innerHTML="<p>No hay partidos para mostrar.</p>";
+}
 
-    function mostrarManual() {
-      agenda.innerHTML = "";
-      listaManual.forEach(p => {
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `
-          <div class="pais">${p.pais}</div>
-          <div class="liga">${p.liga}</div>
-          <div class="match">${p.local} vs ${p.visita}</div>
-          <div class="hora">${p.hora}</div>
-        `;
-        agenda.appendChild(div);
-      });
-    }
+// Event listener del buscador
+searchInput.addEventListener("input",()=>cargarPartidos());
 
-    function formatearHora(fecha) {
-      const hora = new Date(fecha);
-      return hora.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-    }
-
-    function bandera(pais) {
-      const banderas = {
-        "Argentina": "🇦🇷",
-        "Brasil": "🇧🇷",
-        "España": "🇪🇸",
-        "Italia": "🇮🇹",
-        "Francia": "🇫🇷",
-        "Inglaterra": "🏴",
-        "Alemania": "🇩🇪"
-      };
-      return banderas[pais] || "🌍";
-    }
-
-    cargarPartidos();
-  </script>
+cargarPartidos();
+</script>
 </body>
 </html>
