@@ -6,8 +6,11 @@
 <title>Agenda Deportiva - Apuestas Pro</title>
 <style>
   body { font-family: "Poppins", sans-serif; background:#0b0c10; color:#fff; margin:0; padding:0;}
-  header { background:#1f2833; text-align:center; padding:15px; font-size:1.5em; letter-spacing:1px; }
-  #searchBar { width:90%; margin:15px auto; display:block; padding:10px; font-size:1em; border-radius:8px; border:none; outline:none;}
+  header { background:#1f2833; padding:10px 15px; display:flex; justify-content:space-between; align-items:center; }
+  header h1 { margin:0; font-size:1.5em; letter-spacing:1px; }
+  nav a { color:#66fcf1; text-decoration:none; font-weight:600; margin-left:15px; }
+  nav a:hover { color:#45a29e; }
+  
   .league { margin:20px auto; width:90%; background:#171a21; border-radius:12px; padding:10px 15px; box-shadow:0 0 10px rgba(255,255,255,0.05);}
   .league h2 { text-transform:uppercase; margin:5px 0 10px; font-size:1.2em;}
   .match { background:#222831; padding:12px; border-radius:10px; margin:10px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;}
@@ -30,8 +33,14 @@
 </style>
 </head>
 <body>
-<header>⚽ Agenda Deportiva - Hoy</header>
-<input type="text" id="searchBar" placeholder="Buscar equipo, liga o país...">
+
+<header>
+  <h1>⚽ Agenda Deportiva - Hoy</h1>
+  <nav>
+    <a href="live.html">Ver Fútbol en Vivo</a>
+  </nav>
+</header>
+
 <div id="matches"></div>
 
 <div id="statsModal" class="modal">
@@ -112,13 +121,11 @@ async function showStats(homeId, awayId, homeName, awayName){
       return;
     }
 
-    // Últimos 5 partidos con fecha y marcador
     const ultimos = data.response.slice(0,5).map(f=>{
       const fecha = new Date(f.fixture.date).toLocaleDateString();
       return `${fecha} → ${f.teams.home.name} ${f.goals.home}-${f.goals.away} ${f.teams.away.name}`;
     }).join("<br>");
 
-    // Racha: ganar=🟢, empatar=🟡, perder=🔴
     function getForm(teamId){
       const ultimos5 = data.response.filter(d=>d.teams.home.id===teamId || d.teams.away.id===teamId).slice(0,5);
       return ultimos5.map(g=>{
@@ -144,13 +151,6 @@ async function showStats(homeId, awayId, homeName, awayName){
 }
 
 function closeModal(){ document.getElementById("statsModal").style.display="none"; }
-
-document.getElementById("searchBar").addEventListener("input", e=>{
-  const val = e.target.value.toLowerCase();
-  document.querySelectorAll(".match").forEach(m=>{
-    m.style.display = m.innerText.toLowerCase().includes(val) ? "" : "none";
-  });
-});
 
 getMatches();
 </script>
