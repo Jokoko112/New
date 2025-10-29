@@ -51,6 +51,7 @@ const leagueColors = {
   "Spain":"españa","Italy":"italia","Germany":"alemania","France":"francia"
 };
 
+// Cargar partidos de hoy
 async function getMatches() {
   const today = new Date().toISOString().split("T")[0];
   const res = await fetch(`https://v3.football.api-sports.io/fixtures?date=${today}`,{
@@ -96,6 +97,7 @@ async function getMatches() {
   }
 }
 
+// Mostrar estadísticas reales H2H
 async function showStats(homeId, awayId, homeName, awayName){
   document.getElementById("modalTitle").innerText=`${homeName} vs ${awayName}`;
   document.getElementById("modalBody").innerHTML="Cargando...";
@@ -110,14 +112,27 @@ async function showStats(homeId, awayId, homeName, awayName){
       return;
     }
 
+    // Últimos 5 partidos con fecha y marcador
     const ultimos = data.response.slice(0,5).map(f=>{
       const fecha = new Date(f.fixture.date).toLocaleDateString();
       return `${fecha} → ${f.teams.home.name} ${f.goals.home}-${f.goals.away} ${f.teams.away.name}`;
     }).join("<br>");
 
+    // Racha: ganar=🟢, empatar=🟡, perder=🔴
+    function getForm(teamId){
+      const ultimos5 = data.response.filter(d=>d.teams.home.id===teamId || d.teams.away.id===teamId).slice(0,5);
+      return ultimos5.map(g=>{
+        const esHome = g.teams.home.id===teamId;
+        const goles = esHome ? [g.goals.home, g.goals.away] : [g.goals.away, g.goals.home];
+        if(goles[0] > goles[1]) return "🟢";
+        else if(goles[0] === goles[1]) return "🟡";
+        else return "🔴";
+      }).join("");
+    }
+
     document.getElementById("modalBody").innerHTML=`
       <p><b>Últimos enfrentamientos:</b><br>${ultimos}</p>
-      <p><b>Racha reciente:</b><br>${homeName}: ${getForm(f.home)}<br>${awayName}: ${getForm(f.away)}</p>
+      <p><b>Racha reciente:</b><br>${homeName}: ${getForm(homeId)}<br>${awayName}: ${getForm(awayId)}</p>
     `;
 
   } catch(err){
@@ -128,10 +143,8 @@ async function showStats(homeId, awayId, homeName, awayName){
   document.getElementById("statsModal").style.display="flex";
 }
 
-// Modal
 function closeModal(){ document.getElementById("statsModal").style.display="none"; }
 
-// Buscador
 document.getElementById("searchBar").addEventListener("input", e=>{
   const val = e.target.value.toLowerCase();
   document.querySelectorAll(".match").forEach(m=>{
@@ -140,17 +153,6 @@ document.getElementById("searchBar").addEventListener("input", e=>{
 });
 
 getMatches();
-
-// Función ejemplo para generar racha
-function getForm(teamData){
-  if(!teamData || !teamData.fixtures) return "Sin datos";
-  const ultimos = teamData.fixtures.slice(0,5).map(g=>{
-    if(g.result.win===true) return "🟢";
-    else if(g.result.draw===true) return "🟡";
-    else return "🔴";
-  }).join("");
-  return ultimos || "Sin datos";
-}
 </script>
 </body>
 </html>
