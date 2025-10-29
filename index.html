@@ -1,164 +1,156 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agenda Apuesta ⚽</title>
-  <style>
-    body { background: #0f172a; color: #f1f5f9; font-family: "Poppins", sans-serif; margin:0; padding:0; text-align:center; }
-    header { background:#1e293b; padding:1rem; box-shadow:0 2px 10px rgba(0,0,0,0.4); }
-    h1 { color: #38bdf8; margin:0; }
-    .filters { margin:1rem auto; max-width:500px; display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap; }
-    input { padding:0.5rem; border-radius:6px; border:1px solid #ccc; flex:1; min-width:150px; }
-    .country { font-weight:bold; color:#facc15; margin-top:1rem; font-size:1.2rem; text-align:left; }
-    .league { color:#94a3b8; font-weight:600; margin-top:0.3rem; text-align:left; }
-    .match { background:#1e293b; margin:0.5rem 0; padding:0.5rem 1rem; border-radius:8px; display:flex; justify-content:space-between; align-items:center; }
-    .hora { color:#22c55e; font-weight:bold; }
-    .container { max-width:600px; margin:0 auto; padding:1rem; text-align:left; }
-    footer { text-align:center; font-size:0.85rem; color:#666; margin-top:2rem; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Agenda Deportiva - Apuestas Pro</title>
+<style>
+  body { font-family: "Poppins", sans-serif; background:#0b0c10; color:#fff; margin:0; padding:0;}
+  header { background:#1f2833; text-align:center; padding:15px; font-size:1.5em; letter-spacing:1px; }
+  #searchBar { width:90%; margin:15px auto; display:block; padding:10px; font-size:1em; border-radius:8px; border:none; outline:none;}
+  .league { margin:20px auto; width:90%; background:#171a21; border-radius:12px; padding:10px 15px; box-shadow:0 0 10px rgba(255,255,255,0.05);}
+  .league h2 { text-transform:uppercase; margin:5px 0 10px; font-size:1.2em;}
+  .match { background:#222831; padding:12px; border-radius:10px; margin:10px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;}
+  .match span { display:block; margin:3px 0;}
+  button { background:#45a29e; color:#fff; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:600; transition:0.2s;}
+  button:hover { background:#66fcf1; color:#000;}
+
+  .modal { display:none; position:fixed; z-index:10; left:0; top:0; width:100%; height:100%; background-color: rgba(0,0,0,0.8); justify-content:center; align-items:center;}
+  .modal-content { background:#1f2833; border-radius:15px; padding:20px; width:90%; max-width:400px; text-align:left;}
+  .modal-content h3 { margin-top:0;}
+  .close { background:#c3073f; float:right; padding:5px 10px; border-radius:6px; cursor:pointer;}
+
+  .argentina { border-left:5px solid #75aadb;}
+  .brasil { border-left:5px solid #009739;}
+  .inglaterra { border-left:5px solid #00247d;}
+  .españa { border-left:5px solid #aa151b;}
+  .italia { border-left:5px solid #009246;}
+  .alemania { border-left:5px solid #000;}
+  .francia { border-left:5px solid #0055a4;}
+</style>
 </head>
 <body>
-<header>
-  <h1>Agenda Apuesta ⚽</h1>
-  <p>Partidos de hoy - Hora real de cada liga (24h)</p>
-</header>
+<header>⚽ Agenda Deportiva - Hoy</header>
+<input type="text" id="searchBar" placeholder="Buscar equipo, liga o país...">
+<div id="matches"></div>
 
-<div class="filters">
-  <input type="text" id="search" placeholder="Buscar por país, liga o equipo...">
+<div id="statsModal" class="modal">
+  <div class="modal-content">
+    <button class="close" onclick="closeModal()">Cerrar</button>
+    <h3 id="modalTitle">Estadísticas del Partido</h3>
+    <div id="modalBody">Cargando...</div>
+  </div>
 </div>
-
-<div class="container" id="agenda">Cargando partidos...</div>
-
-<footer>
-  Datos por <a href="https://www.api-football.com/" target="_blank">API-Football</a> — legal y sin transmisiones.
-</footer>
 
 <script>
 const API_KEY = "58587099b74e80acd927232e2fbf71df";
-const agenda = document.getElementById("agenda");
-const searchInput = document.getElementById("search");
+const matchesDiv = document.getElementById("matches");
 
-// Lista manual por si API falla
-const listaManual = [
-  { pais: "Argentina 🇦🇷", liga: "Primera División", local: "River Plate", visita: "Boca Juniors", hora: "20:10" },
-  { pais: "Argentina 🇦🇷", liga: "Primera Nacional", local: "San Martín (T)", visita: "Ferro", hora: "19:30" },
-  { pais: "Brasil 🇧🇷", liga: "Serie A", local: "Flamengo", visita: "Palmeiras", hora: "21:00" },
-  { pais: "España 🇪🇸", liga: "LaLiga", local: "Real Madrid", visita: "Barcelona", hora: "17:00" }
-];
-
-// Mapas de países y banderas
-const paisesESP = {
-  "Argentina":"Argentina","Brazil":"Brasil","Spain":"España","Turkey":"Turquía","Italy":"Italia",
-  "France":"Francia","England":"Inglaterra","Germany":"Alemania","Portugal":"Portugal","Mexico":"México",
-  "Ecuador":"Ecuador","Uruguay":"Uruguay","Chile":"Chile"
-};
-const banderas = {
-  "Argentina":"🇦🇷","Brasil":"🇧🇷","España":"🇪🇸","Turquía":"🇹🇷","Italia":"🇮🇹",
-  "Francia":"🇫🇷","Inglaterra":"🏴","Alemania":"🇩🇪","Portugal":"🇵🇹","México":"🇲🇽",
-  "Ecuador":"🇪🇨","Uruguay":"🇺🇾","Chile":"🇨🇱"
+const leagueColors = {
+  "Argentina": "argentina", "Brazil":"brasil","England":"inglaterra",
+  "Spain":"españa","Italy":"italia","Germany":"alemania","France":"francia"
 };
 
-// Ligas permitidas (solo apostables A y B)
-const ligasPermitidas = [
-  "Primera División","Primera Nacional","Serie A","Serie B",
-  "LaLiga","Segunda División","Premier League","Championship",
-  "Serie A Italia","Serie B Italia","Ligue 1","Ligue 2"
-];
+async function getMatches() {
+  const today = new Date().toISOString().split("T")[0];
+  const res = await fetch(`https://v3.football.api-sports.io/fixtures?date=${today}`,{
+    headers: { "x-apisports-key": API_KEY }
+  });
+  const data = await res.json();
 
-// Traer partidos API
-async function cargarPartidos() {
+  const filtered = data.response.filter(m =>
+    ["Primera Division","Serie A","Serie B","Premier League","La Liga","Bundesliga","Ligue 1"].includes(m.league.name)
+  );
+
+  const grouped = {};
+  filtered.forEach(m => {
+    const country = m.league.country;
+    if(!grouped[country]) grouped[country] = [];
+    grouped[country].push(m);
+  });
+
+  matchesDiv.innerHTML="";
+  for(const country in grouped){
+    const div = document.createElement("div");
+    const colorClass = leagueColors[country] || "";
+    div.className=`league ${colorClass}`;
+    div.innerHTML=`<h2>${country}</h2>`;
+
+    grouped[country].forEach(m=>{
+      const match = document.createElement("div");
+      match.className="match";
+      const utcDate = new Date(m.fixture.date);
+      const localTime = new Intl.DateTimeFormat("es-AR",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:m.league.timezone}).format(utcDate);
+
+      match.innerHTML=`
+        <div>
+          <span><b>${m.teams.home.name}</b> vs <b>${m.teams.away.name}</b></span>
+          <span>${localTime} hrs</span>
+          <span>${m.league.name}</span>
+        </div>
+        <button onclick="showStats(${m.teams.home.id},${m.teams.away.id},'${m.teams.home.name}','${m.teams.away.name}')">Ver estadísticas 📊</button>
+      `;
+      div.appendChild(match);
+    });
+    matchesDiv.appendChild(div);
+  }
+}
+
+async function showStats(homeId, awayId, homeName, awayName){
+  document.getElementById("modalTitle").innerText=`${homeName} vs ${awayName}`;
+  document.getElementById("modalBody").innerHTML="Cargando...";
+
   try {
-    const res = await fetch(`https://v3.football.api-sports.io/fixtures?date=${new Date().toISOString().split('T')[0]}`, {
+    const res = await fetch(`https://v3.football.api-sports.io/fixtures/headtohead?h2h=${homeId}-${awayId}`,{
       headers: { "x-apisports-key": API_KEY }
     });
     const data = await res.json();
-    if (data.response && data.response.length>0) mostrarPartidosAPI(filtrarHoy(partidosApostables(data.response)));
-    else mostrarManual();
-  } catch(err) { console.log(err); mostrarManual(); }
-}
-
-// Filtrar solo partidos hoy
-function filtrarHoy(partidos) {
-  const hoy = new Date();
-  return partidos.filter(p=>{
-    const partido = new Date(p.fixture.date);
-    return partido.getFullYear()===hoy.getFullYear() &&
-           partido.getMonth()===hoy.getMonth() &&
-           partido.getDate()===hoy.getDate();
-  });
-}
-
-// Filtrar solo ligas apostables
-function partidosApostables(partidos) {
-  return partidos.filter(p=>ligasPermitidas.includes(p.league.name));
-}
-
-// Mostrar partidos API
-function mostrarPartidosAPI(partidos) {
-  const lista = partidos.map(p=>{
-    const paisEsp = paisesESP[p.league.country] || p.league.country;
-    return {
-      pais: paisEsp + " " + (banderas[paisEsp]||"🌍"),
-      liga: p.league.name,
-      local: p.teams.home.name,
-      visita: p.teams.away.name,
-      hora: formatearHoraReal(p.fixture.date, p.league.timezone)
+    if(!data.response || data.response.length===0){
+      document.getElementById("modalBody").innerHTML="<p>No hay datos de enfrentamientos.</p>";
+      return;
     }
-  });
-  renderizar(ordenarPorPaisLiga(lista));
-}
 
-// Mostrar lista manual
-function mostrarManual() { renderizar(ordenarPorPaisLiga(listaManual)); }
+    const ultimos = data.response.slice(0,5).map(f=>{
+      const fecha = new Date(f.fixture.date).toLocaleDateString();
+      return `${fecha} → ${f.teams.home.name} ${f.goals.home}-${f.goals.away} ${f.teams.away.name}`;
+    }).join("<br>");
 
-// Formatear hora real de la liga en 24h
-function formatearHoraReal(fechaUTC, timezone) {
-  const partido = new Date(fechaUTC);
-  try {
-    return partido.toLocaleTimeString("es-AR", {hour12:false,hour:"2-digit",minute:"2-digit", timeZone: timezone});
-  } catch {
-    // fallback si timezone falla
-    return partido.toLocaleTimeString("es-AR",{hour12:false,hour:"2-digit",minute:"2-digit"});
+    document.getElementById("modalBody").innerHTML=`
+      <p><b>Últimos enfrentamientos:</b><br>${ultimos}</p>
+      <p><b>Racha reciente:</b><br>${homeName}: ${getForm(f.home)}<br>${awayName}: ${getForm(f.away)}</p>
+    `;
+
+  } catch(err){
+    document.getElementById("modalBody").innerHTML="<p>Error al cargar estadísticas.</p>";
+    console.log(err);
   }
+
+  document.getElementById("statsModal").style.display="flex";
 }
 
-// Ordenar por país y liga
-function ordenarPorPaisLiga(lista) {
-  const grupos = {};
-  lista.forEach(p=>{
-    if(!grupos[p.pais]) grupos[p.pais]={};
-    if(!grupos[p.pais][p.liga]) grupos[p.pais][p.liga]=[];
-    grupos[p.pais][p.liga].push(p);
-  });
-  return grupos;
-}
-
-// Renderizar
-function renderizar(grupos) {
-  const q = searchInput.value.toLowerCase();
-  agenda.innerHTML="";
-  for(const pais in grupos){
-    let paisMatches=false;
-    let htmlPais=`<div class="country">${pais}</div>`;
-    for(const liga in grupos[pais]){
-      const partidos = grupos[pais][liga].filter(p=>(`${p.local} ${p.visita} ${p.liga} ${p.pais}`.toLowerCase().includes(q)));
-      if(partidos.length===0) continue;
-      paisMatches=true;
-      htmlPais+=`<div class="league">${liga}</div>`;
-      partidos.forEach(m=>{
-        htmlPais+=`<div class="match"><span>${m.local} vs ${m.visita}</span><span class="hora">${m.hora}</span></div>`;
-      });
-    }
-    if(paisMatches) agenda.innerHTML+=htmlPais;
-  }
-  if(!agenda.innerHTML) agenda.innerHTML="<p>No hay partidos para mostrar.</p>";
-}
+// Modal
+function closeModal(){ document.getElementById("statsModal").style.display="none"; }
 
 // Buscador
-searchInput.addEventListener("input",()=>cargarPartidos());
+document.getElementById("searchBar").addEventListener("input", e=>{
+  const val = e.target.value.toLowerCase();
+  document.querySelectorAll(".match").forEach(m=>{
+    m.style.display = m.innerText.toLowerCase().includes(val) ? "" : "none";
+  });
+});
 
-cargarPartidos();
+getMatches();
+
+// Función ejemplo para generar racha
+function getForm(teamData){
+  if(!teamData || !teamData.fixtures) return "Sin datos";
+  const ultimos = teamData.fixtures.slice(0,5).map(g=>{
+    if(g.result.win===true) return "🟢";
+    else if(g.result.draw===true) return "🟡";
+    else return "🔴";
+  }).join("");
+  return ultimos || "Sin datos";
+}
 </script>
 </body>
 </html>
