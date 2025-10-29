@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agenda Apuesta - Partidos de Hoy</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #111;
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+      justify-content: center;
+    }
+    select, input {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      padding: 8px 14px;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .card {
+      background: white;
+      margin-bottom: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .country {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .league {
+      color: #333;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    .match {
+      border-top: 1px solid #eee;
+      padding-top: 6px;
+      margin-top: 6px;
+    }
+    .time {
+      color: #555;
+      font-size: 0.9em;
+    }
+    footer {
+      text-align: center;
+      font-size: 0.85em;
+      color: #666;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚽ Agenda Apuesta - Partidos de Hoy</h1>
+    <p>Consulta qué partidos se juegan hoy y de qué liga son</p>
+  </header>
+
+  <section class="filters">
+    <select id="filterCountry">
+      <option value="Todos">Todos los países</option>
+    </select>
+    <select id="filterLeague">
+      <option value="Todos">Todas las ligas</option>
+    </select>
+    <input type="text" id="search" placeholder="Buscar equipo o liga..." />
+    <button id="btnReload">🔄 Actualizar</button>
+  </section>
+
+  <div id="content">Cargando partidos...</div>
+
+  <footer>
+    Datos por <a href="https://www.thesportsdb.com/" target="_blank">TheSportsDB</a> — página informativa sin transmisiones.
+  </footer>
+
+  <script>
+    const content = document.getElementById("content");
+    const filterCountry = document.getElementById("filterCountry");
+    const filterLeague = document.getElementById("filterLeague");
+    const searchInput = document.getElementById("search");
+    const btnReload = document.getElementById("btnReload");
+
+    async function cargarPartidos() {
+      content.textContent = "Cargando partidos...";
+      const hoy = new Date();
+      const yyyy = hoy.getFullYear();
+      const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+      const dd = String(hoy.getDate()).padStart(2, '0');
+      const fecha = `${yyyy}-${mm}-${dd}`;
+      const url = `https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=${fecha}&s=Soccer`;
+      
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const eventos = data.events || [];
+        mostrar(eventos);
+      } catch (e) {
+        content.innerHTML = "❌ Error al cargar los datos.";
+      }
+    }
+
+    function mostrar(eventos) {
+      // Filtros
+      const paises = Array.from(new Set(eventos.map(e => e.strCountry))).filter(Boolean);
+      const ligas = Array.from(new Set(eventos.map(e => e.strLeague))).filter(Boolean);
+
+      // Llenar selects
+      filterCountry.innerHTML = '<option value=\"Todos\">Todos los países</option>' +
+        paises.map(p => `<option value=\"${p}\">${p}</option>`).join('');
+      filterLeague.innerHTML = '<option value=\"Todos\">Todas las ligas</option>' +
+        ligas.map(l => `<option value=\"${l}\">${l}</option>`).join('');
+
+      renderizar(eventos);
+    }
+
+    function renderizar(eventos) {
+      const fc = filterCountry.value;
+      const fl = filterLeague.value;
+      const q = searchInput.value.toLowerCase();
+
+      const filtrados = eventos.filter(e => {
+        if (fc !== 'Todos' && e.strCountry !== fc) return false;
+        if (fl !== 'Todos' && e.strLeague !== fl) return false;
+        if (q && !(`${e.strEvent} ${e.strLeague} ${e.strCountry}`.toLowerCase().includes(q))) return false;
+        return true;
+      });
+
+      if (!filtrados.length) {
+        content.innerHTML = '<div class=\"card\">No hay partidos para mostrar.</div>';
+        return;
+      }
+
+      // Agrupar por país > liga
+      const grupos = {};
+      filtrados.forEach(e => {
+        if (!grupos[e.strCountry]) grupos[e.strCountry] = {};
+        if (!grupos[e.strCountry][e.strLeague]) grupos[e.strCountry][e.strLeague] = [];
+        grupos[e.strCountry][e.strLeague].push(e);
+      });
+
+      let html = '';
+      for (const pais in grupos) {
+        html += `<div class='country'>🇺🇳 ${pais}</div>`;
+        for (const liga in grupos[pais]) {
+          html += `<div class='league'>${liga}</div>`;
+          grupos[pais][liga].forEach(e => {
+            html += `<div class='match'>
+              <strong>${e.strEvent}</strong><br>
+              <span class='time'>${e.strTime} (hora local del evento)</span>
+            </div>`;
+          });
+        }
+      }
+      content.innerHTML = html;
+    }
+
+    btnReload.addEventListener('click', cargarPartidos);
+    searchInput.addEventListener('input', () => cargarPartidos());
+    filterCountry.addEventListener('change', () => cargarPartidos());
+    filterLeague.addEventListener('change', () => cargarPartidos());
+
+    cargarPartidos();
+  </script>
+</body>
+</html>
