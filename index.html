@@ -41,26 +41,32 @@ const searchInput = document.getElementById("search");
 
 // Lista manual por si API falla
 const listaManual = [
-  { pais: "Argentina 🇦🇷", liga: "Primera Nacional", local: "San Martín (T)", visita: "Ferro", hora: "20:10" },
-  { pais: "Brasil 🇧🇷", liga: "Serie A", local: "Flamengo", visita: "Palmeiras", hora: "19:30" },
-  { pais: "España 🇪🇸", liga: "LaLiga", local: "Real Madrid", visita: "Getafe", hora: "17:00" }
+  { pais: "Argentina 🇦🇷", liga: "Primera División", local: "River Plate", visita: "Boca Juniors", hora: "20:10" },
+  { pais: "Argentina 🇦🇷", liga: "Primera Nacional", local: "San Martín (T)", visita: "Ferro", hora: "19:30" },
+  { pais: "Brasil 🇧🇷", liga: "Serie A", local: "Flamengo", visita: "Palmeiras", hora: "21:00" },
+  { pais: "España 🇪🇸", liga: "LaLiga", local: "Real Madrid", visita: "Barcelona", hora: "17:00" }
 ];
 
-// Mapa de países en español
+// Mapas de países y banderas
 const paisesESP = {
   "Argentina":"Argentina","Brazil":"Brasil","Spain":"España","Turkey":"Turquía","Italy":"Italia",
   "France":"Francia","England":"Inglaterra","Germany":"Alemania","Portugal":"Portugal","Mexico":"México",
   "Ecuador":"Ecuador","Uruguay":"Uruguay","Chile":"Chile"
 };
-
-// Banderas básicas
 const banderas = {
   "Argentina":"🇦🇷","Brasil":"🇧🇷","España":"🇪🇸","Turquía":"🇹🇷","Italia":"🇮🇹",
   "Francia":"🇫🇷","Inglaterra":"🏴","Alemania":"🇩🇪","Portugal":"🇵🇹","México":"🇲🇽",
   "Ecuador":"🇪🇨","Uruguay":"🇺🇾","Chile":"🇨🇱"
 };
 
-// Traer partidos desde API-Football
+// Ligas permitidas (A y B)
+const ligasPermitidas = [
+  "Primera División","Primera Nacional","Serie A","Serie B",
+  "LaLiga","Segunda División","Premier League","Championship",
+  "Serie A Italia","Serie B Italia","Ligue 1","Ligue 2"
+];
+
+// Traer partidos API
 async function cargarPartidos() {
   try {
     const res = await fetch(`https://v3.football.api-sports.io/fixtures?date=${new Date().toISOString().split('T')[0]}`, {
@@ -72,11 +78,12 @@ async function cargarPartidos() {
   } catch(err) { console.log(err); mostrarManual(); }
 }
 
-// Filtrar solo partidos de hoy según hora Argentina (UTC-3)
+// Filtrar solo partidos de hoy según hora Argentina
 function filtrarHoyArgentina(partidos) {
   const hoy = new Date();
   const offset = -3 * 60; // UTC-3
   return partidos.filter(p=>{
+    if(!ligasPermitidas.includes(p.league.name)) return false; // filtrar ligas
     const partidoUTC = new Date(p.fixture.date);
     const partidoARG = new Date(partidoUTC.getTime() + offset*60000);
     return partidoARG.getFullYear()===hoy.getFullYear() &&
